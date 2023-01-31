@@ -7,11 +7,13 @@ export type FieldType =
   | "Float"
   | "Decimal"
   | "Json"
-  | "Bytes";
+  | "Bytes"
+  | string;
 
 export type Field = {
   relationField: boolean;
   documentation: string;
+  isUpdatedAt: boolean;
   required: boolean;
   unique: boolean;
   default: string;
@@ -39,4 +41,4 @@ export type Enum = {
   name: string;
 };
 
-export type PrismaDatabase = "postgresql" | "sqlite" | "mysql";
+export type PrismaDatabase = "postgresql" | "sqlite" | "mysql" | "sqlserver";

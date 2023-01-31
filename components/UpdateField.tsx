@@ -1,5 +1,5 @@
 import Modal from "./Modal";
-import { Button, Select, Separator, TextField } from "@prisma/lens";
+import { Button, Select, TextField } from "@prisma/lens";
 import { TYPES } from "../lib/fields";
 import { Field, FieldType, Model } from "../lib/types";
 import { PRISMA_DEFAULT_VALUES } from "../lib/prisma";
@@ -23,6 +23,7 @@ const UpdateField = ({
 }: UpdateFieldProps) => {
   const { schema } = useSchemaContext();
 
+  const [isUpdatedAt, setIsUpdatedAt] = useState<boolean>(false);
   const [defaultValue, setDefaultValue] = useState<string>("");
   const [type, setType] = useState<FieldType>("" as FieldType);
   const [required, setRequired] = useState<boolean>(false);
@@ -32,6 +33,7 @@ const UpdateField = ({
   const [name, setName] = useState<string>("");
 
   useEffect(() => {
+    setIsUpdatedAt(defaultValues.isUpdatedAt);
     setDefaultValue(defaultValues.default);
     setRequired(defaultValues.required);
     setUnique(defaultValues.unique);
@@ -43,6 +45,7 @@ const UpdateField = ({
 
   const resetState = () => {
     setType("" as FieldType);
+    setIsUpdatedAt(false);
     setDefaultValue("");
     setRequired(false);
     setUnique(false);
@@ -52,6 +55,17 @@ const UpdateField = ({
   };
 
   const enumType = schema.enums.find((e) => e.name === type && e.fields.length);
+
+  const defaultDefaultValues =
+    enumType?.fields?.map((field) => ({
+      description: "",
+      value: field,
+      label: field,
+    })) || PRISMA_DEFAULT_VALUES(type);
+
+  const [isCustomDefaultValue, setIsCustomDefaultValue] = useState<boolean>(
+    !defaultDefaultValues.some((dv) => dv.value === defaultValue)
+  );
 
   return (
     <Modal
@@ -69,6 +83,7 @@ const UpdateField = ({
           onSubmit({
             ...defaultValues,
             default: defaultValue,
+            isUpdatedAt,
             required,
             unique,
             isId,
@@ -107,33 +122,44 @@ const UpdateField = ({
             </Select.Option>
           ))}
         </Select.Container>
-        {enumType || PRISMA_DEFAULT_VALUES(type).length ? (
-          <Select.Container
-            defaultSelectedKey={defaultValue}
-            onSelectionChange={(key) => {
+
+        <Select.Container
+          defaultSelectedKey={isCustomDefaultValue ? "custom" : defaultValue}
+          onSelectionChange={(key) => {
+            if (key === "custom") {
+              setIsCustomDefaultValue(true);
+              setDefaultValue("");
+            } else {
+              setIsCustomDefaultValue(false);
               setDefaultValue(key);
-            }}
-            hint="A Prisma default value function"
-            label="Default value"
-            key={defaultValue}
-          >
-            <Select.Option key="">No default value</Select.Option>
-            {(
-              enumType?.fields?.map((field) => ({
-                description: "",
-                value: field,
-                label: field,
-              })) || PRISMA_DEFAULT_VALUES(type)
-            ).map((defaultValue) => (
-              <Select.Option
-                description={defaultValue.description}
-                key={defaultValue.value}
-              >
-                {defaultValue.label}
-              </Select.Option>
-            ))}
-          </Select.Container>
-        ) : null}
+            }
+          }}
+          hint="A Prisma default value function"
+          label="Default value"
+          key={defaultValue}
+        >
+          <Select.Option key="">No default value</Select.Option>
+          {defaultDefaultValues.map((defaultValue) => (
+            <Select.Option
+              description={defaultValue.description}
+              key={defaultValue.value}
+            >
+              {defaultValue.label}
+            </Select.Option>
+          ))}
+          <Select.Option key="custom" description="Add a custom default value">
+            Custom default value
+          </Select.Option>
+        </Select.Container>
+
+        {isCustomDefaultValue && (
+          <TextField
+            label="Custom default value"
+            onChange={setDefaultValue}
+            value={defaultValue}
+          />
+        )}
+
         <div className="flex space-x-8 items-start py-2">
           <div className="flex flex-col space-y-3">
             <label
@@ -167,6 +193,24 @@ const UpdateField = ({
               id="unique"
             />
           </div>
+          {type === "DateTime" && (
+            <div className="flex flex-col space-y-3">
+              <label
+                className="font-medium text-sm text-gray-800"
+                htmlFor="isUpdatedAt"
+              >
+                Updated At
+              </label>
+              <input
+                onChange={(e) => {
+                  setIsUpdatedAt(e.target.checked);
+                }}
+                checked={isUpdatedAt}
+                type="checkbox"
+                id="isUpdatedAt"
+              />
+            </div>
+          )}
           <div className="flex flex-col space-y-3">
             <label className="font-medium text-sm text-gray-800" htmlFor="list">
               List

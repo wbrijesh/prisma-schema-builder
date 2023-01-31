@@ -30,7 +30,8 @@ import { useEffect, useState } from "react";
 import { PRISMA_DATABASES } from "../lib/prisma";
 import AddEnum from "./AddEnum";
 import UpdateEnum from "./UpdateEnum";
-import Links from "./Links";
+import Links, { LINKS } from "./Links";
+import CommandPalette, { filterItems, getItemIndex } from "react-cmdk";
 
 export default function Models() {
   const { schema, schemas, setSchema, setSchemas } = useSchemaContext();
@@ -43,6 +44,25 @@ export default function Models() {
   const [editingName, setEditingName] = useState<boolean>(false);
   const [editingEnum, setEditingEnum] = useState<string>();
   const [name, setName] = useState<string>("");
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] =
+    useState<boolean>(false);
+  const [commandPaletteSearch, setCommandPaletteSearch] = useState<string>("");
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.metaKey && e.key === "k") {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   const isGraphView = pathname.endsWith("/graph");
 
@@ -63,10 +83,162 @@ export default function Models() {
     });
   };
 
+  const handleCreateModel = () => {
+    if (schema.models.some((model: Model) => model.name === "New")) {
+      toast.error("A model called New exists");
+    } else {
+      const newSchema = {
+        ...schema,
+        models: [
+          ...schema.models,
+          {
+            name: "New",
+            fields: [ID_FIELD],
+            enums: [],
+          },
+        ],
+      };
+      setSchema(newSchema);
+      push(`/schemas/${schema.name}/models/${newSchema.models.length - 1}`);
+    }
+  };
+
+  const handleDeleteSchema = () => {
+    setSchemas(schemas.filter((s: SchemaType) => s.name !== schema.name));
+    push("/");
+  };
+
+  const filteredCommandPaletteItems = filterItems(
+    [
+      {
+        heading: "Pages",
+        id: "pages",
+        items: [
+          {
+            id: "pages.home",
+            children: "Home",
+            icon: "HomeIcon",
+            href: "/",
+          },
+          {
+            id: "pages.graph-view",
+            children: "Graph view",
+            icon: "GlobeIcon",
+            href: `/schemas/${schema.name}/graph`,
+          },
+        ],
+      },
+      {
+        heading: "Quick actions",
+        id: "quick-actions",
+        items: [
+          {
+            id: "quick-actions.new-model",
+            onClick: handleCreateModel,
+            children: "New model",
+            icon: "PlusIcon",
+          },
+          {
+            id: "quick-actions.new-enum",
+            onClick: () => {
+              setShowingAddEnum(true);
+            },
+            children: "New enum",
+            icon: "PlusIcon",
+          },
+          {
+            id: "quick-actions.import-schema",
+            onClick: () => {
+              setShowingImportSchema(true);
+            },
+            children: "Import schema",
+            icon: "DocumentDownloadIcon",
+          },
+          {
+            id: "quick-actions.generate-schema",
+            onClick: () => {
+              setShowingSchema(true);
+            },
+            children: "Generate schema",
+            icon: "CodeIcon",
+          },
+          {
+            id: "quick-actions.delete-schema",
+            onClick: () => {
+              handleDeleteSchema();
+            },
+            children: "Delete schema",
+            icon: "TrashIcon",
+          },
+        ],
+      },
+      {
+        heading: "Models",
+        id: "models",
+        items: schema.models.map((model, i) => ({
+          href: `/schemas/${schema.name}/models/${i}`,
+          children: model.name,
+          icon: "CubeIcon",
+          id: model.name,
+        })),
+      },
+      {
+        heading: "Enums",
+        id: "enums",
+        items: schema.enums.map((e, i) => ({
+          onClick: () => {
+            setEditingEnum(e.name);
+          },
+          icon: "ViewListIcon",
+          children: e.name,
+          id: e.name,
+        })),
+      },
+      {
+        heading: "Links",
+        id: "links",
+        items: LINKS.map((LINK, i) => ({
+          rel: "noreferrer noopener",
+          icon: "ExternalLinkIcon",
+          children: LINK.label,
+          href: LINK.href,
+          id: LINK.label,
+          target: "_blank",
+        })),
+      },
+    ],
+    commandPaletteSearch
+  );
+
   if (!schema) return null;
 
   return (
     <>
+      <CommandPalette
+        onChangeSearch={setCommandPaletteSearch}
+        onChangeOpen={setIsCommandPaletteOpen}
+        isOpen={isCommandPaletteOpen}
+        search={commandPaletteSearch}
+        renderLink={({ href, ...rest }) => (
+          <Link href={href ?? ""} passHref>
+            <a {...rest} />
+          </Link>
+        )}
+      >
+        {filteredCommandPaletteItems.map(({ id, items, ...rest }) => (
+          <CommandPalette.List key={id} {...rest}>
+            {items.map(({ id, ...rest }) => (
+              <CommandPalette.ListItem
+                index={getItemIndex(filteredCommandPaletteItems, id)}
+                iconType="outline"
+                key={id}
+                {...rest}
+              />
+            ))}
+          </CommandPalette.List>
+        ))}
+      </CommandPalette>
+
       <div className="flex flex-col border flex-1 max-w-sm h-screen overflow-y-auto p-4 space-y-3 bg-gray-100">
         <div className="flex flex-col space-y-3 flex-1">
           <div>
@@ -147,10 +319,7 @@ export default function Models() {
               <Menu.Body
                 onSelectionChange={(key) => {
                   if (key === "delete") {
-                    setSchemas(
-                      schemas.filter((s: SchemaType) => s.name !== schema.name)
-                    );
-                    push("/");
+                    handleDeleteSchema();
                   }
                 }}
                 anchor="right"
@@ -201,64 +370,50 @@ export default function Models() {
 
           <Separator />
 
-          <Label>Enums</Label>
+          {!["sqlite", "sqlserver"].includes(schema.database) && (
+            <>
+              <Label>Enums</Label>
 
-          {schema.enums.map((e) => {
-            return (
-              <button
-                className="flex border border-transparent focus:border-blue-500 hover:border-blue-500 transition rounded-lg cursor-pointer"
-                onClick={() => {
-                  setEditingEnum(e.name);
-                }}
-                key={e.name}
-              >
-                <Card className="w-full transition flex items-center space-x-3">
-                  <List size={20} className="text-gray-500" />
-                  <h3>{e.name}</h3>
-                </Card>
-              </button>
-            );
-          })}
+              {schema.enums.map((e) => {
+                return (
+                  <button
+                    className="flex border border-transparent focus:border-blue-500 hover:border-blue-500 transition rounded-lg cursor-pointer"
+                    onClick={() => {
+                      setEditingEnum(e.name);
+                    }}
+                    key={e.name}
+                  >
+                    <Card className="w-full transition flex items-center space-x-3">
+                      <List size={20} className="text-gray-500" />
+                      <h3>{e.name}</h3>
+                    </Card>
+                  </button>
+                );
+              })}
 
-          <Separator />
+              <Separator />
+            </>
+          )}
 
           <Button
             onPress={() => {
-              if (schema.models.some((model: Model) => model.name === "New")) {
-                toast.error("A model called New exists");
-              } else {
-                const newSchema = {
-                  ...schema,
-                  models: [
-                    ...schema.models,
-                    {
-                      name: "New",
-                      fields: [ID_FIELD],
-                      enums: [],
-                    },
-                  ],
-                };
-                setSchema(newSchema);
-                push(
-                  `/schemas/${schema.name}/models/${
-                    newSchema.models.length - 1
-                  }`
-                );
-              }
+              handleCreateModel();
             }}
             variant="secondary"
           >
             New model
           </Button>
 
-          <Button
-            onPress={() => {
-              setShowingAddEnum(true);
-            }}
-            variant="secondary"
-          >
-            New enum
-          </Button>
+          {!["sqlite", "sqlserver"].includes(schema.database) && (
+            <Button
+              onPress={() => {
+                setShowingAddEnum(true);
+              }}
+              variant="secondary"
+            >
+              New enum
+            </Button>
+          )}
 
           <Button
             onPress={() => {
