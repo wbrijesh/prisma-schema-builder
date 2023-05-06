@@ -1,16 +1,18 @@
 import "../styles/globals.css";
 import "react-cmdk/dist/cmdk.css";
+import PricingModal from "../components/PricingModal";
 import Seo from "../components/Seo";
+import Stack from "../components/Stack";
 import WelcomeModal from "../components/WelcomeModal";
+import axios from "axios";
 import splitbee from "@splitbee/web";
 import type { AppProps } from "next/app";
-import { LensProvider } from "@prisma/lens";
 import { SchemaContext } from "../lib/context";
 import { Toaster } from "react-hot-toast";
+import { classNames } from "react-cmdk";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/dist/client/router";
-import PricingModal from "../components/PricingModal";
-import axios from "axios";
+import { inter } from "../lib/font";
 
 splitbee.init();
 
@@ -29,7 +31,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   }, []);
 
   useEffect(() => {
-    if (window) {
+    if (window && schemas.length) {
       localStorage.setItem("schemas", JSON.stringify(schemas));
     }
   }, [schemas]);
@@ -81,36 +83,68 @@ function MyApp({ Component, pageProps }: AppProps) {
     <>
       <Seo />
 
-      <WelcomeModal open={!hasSeenWelcomeModal} onClose={onCloseWelcomeModal} />
+      <style jsx global>
+        {`
+          :root {
+            --font-inter: ${inter.style.fontFamily};
+          }
+        `}
+      </style>
 
-      <PricingModal open={!hasSeenPricingModal} onClose={onClosePricingModal} />
+      <SchemaContext.Provider
+        value={{
+          schema,
+          schemas,
+          setSchemas,
+          setSchema: (newValues) => {
+            setSchemas(
+              schemas.map((s) =>
+                s.name === schema.name
+                  ? {
+                      ...schema,
+                      ...newValues,
+                    }
+                  : s
+              )
+            );
+          },
+        }}
+      >
+        <main className={classNames(inter.variable, "font-sans")}>
+          {!hasSeenWelcomeModal && (
+            <WelcomeModal onClose={onCloseWelcomeModal} />
+          )}
 
-      <LensProvider>
-        <SchemaContext.Provider
-          value={{
-            schema,
-            schemas,
-            setSchemas,
-            setSchema: (newValues) => {
-              setSchemas(
-                schemas.map((s) =>
-                  s.name === schema.name
-                    ? {
-                        ...schema,
-                        ...newValues,
-                      }
-                    : s
-                )
-              );
-            },
-          }}
-        >
-          <main className="antialiased">
+          {!hasSeenPricingModal && (
+            <PricingModal onClose={onClosePricingModal} />
+          )}
+
+          <div className="h-screen flex">
             <Component {...pageProps} />
-            <Toaster />
-          </main>
-        </SchemaContext.Provider>
-      </LensProvider>
+            <Toaster
+              toastOptions={{
+                className: "dark:!bg-neutral-900 dark:!text-white",
+              }}
+            />
+          </div>
+
+          <footer className="bg-gray-100 dark:bg-neutral-800 p-10 border-t dark:border-neutral-700">
+            <Stack align="center" justify="center">
+              <p className="text-sm text-gray-500 dark:text-neutral-400">
+                Maintained by{" "}
+                <a
+                  target="_blank"
+                  href="https://abgn.me"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 dark:text-blue-500 hover:underline"
+                >
+                  Albin Groen
+                </a>
+              </p>
+            </Stack>
+          </footer>
+        </main>
+      </SchemaContext.Provider>
     </>
   );
 }

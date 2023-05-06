@@ -1,9 +1,13 @@
+import Button from "./Button";
 import CommandPalette, { filterItems, getItemIndex } from "react-cmdk";
 import Link from "next/link";
-import Links, { LINKS } from "./Links";
+import Sidebar from "./Sidebar";
+import SidebarItem from "./SidebarItem";
+import Stack from "./Stack";
 import toast from "react-hot-toast";
-import { Button, Separator, Card } from "@prisma/lens";
-import { Layers } from "react-feather";
+import { CircleStackIcon } from "@heroicons/react/24/outline";
+import { LINKS } from "./Links";
+import { PlusIcon } from "@heroicons/react/24/outline";
 import { Schema } from "../lib/types";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/dist/client/router";
@@ -68,16 +72,16 @@ export default function Schemas() {
         items: schemas.map((schema) => ({
           href: `/schemas/${schema.name}`,
           children: schema.name,
-          icon: "CollectionIcon",
+          icon: "CircleStackIcon",
           id: schema.name,
         })),
       },
       {
         heading: "Links",
         id: "links",
-        items: LINKS.map((LINK, i) => ({
+        items: LINKS.map((LINK) => ({
           rel: "noreferrer noopener",
-          icon: "ExternalLinkIcon",
+          icon: "ArrowTopRightOnSquareIcon",
           children: LINK.label,
           href: LINK.href,
           id: LINK.label,
@@ -96,8 +100,8 @@ export default function Schemas() {
         isOpen={isCommandPaletteOpen}
         search={commandPaletteSearch}
         renderLink={({ href, ...rest }) => (
-          <Link href={href ?? ""} passHref>
-            <a {...rest} />
+          <Link href={href ?? ""} className={rest.className} style={rest.style}>
+            {rest.children}
           </Link>
         )}
       >
@@ -115,35 +119,52 @@ export default function Schemas() {
         ))}
       </CommandPalette>
 
-      <div className="flex flex-col border flex-1 max-w-sm h-screen overflow-y-auto p-4 space-y-3 bg-gray-100">
-        <div className="flex flex-col space-y-3 flex-1">
-          {schemas.map((schema: Schema) => {
-            return (
-              <Link href={`/schemas/${schema.name}`} key={schema.name}>
-                <a className="border border-transparent hover:border-blue-500 focus:border-blue-500 transition rounded-lg">
-                  <Card className="flex items-center space-x-3">
-                    <Layers size={20} className="text-gray-500" />
-                    <h3>{schema.name}</h3>
-                  </Card>
-                </a>
-              </Link>
-            );
-          })}
+      <Sidebar>
+        <Stack direction="vertical" className="p-5" spacing="mini">
+          <p className="label">My schemas</p>
 
-          {schemas.length ? <Separator /> : null}
+          <Stack direction="vertical" spacing="huge">
+            <ul className="w-full">
+              {schemas.map((schema) => (
+                <li key={schema.name}>
+                  <SidebarItem
+                    href={`/schemas/${schema.name}`}
+                    icon={CircleStackIcon}
+                  >
+                    {schema.name}
+                  </SidebarItem>
+                </li>
+              ))}
+            </ul>
 
-          <Button
-            onPress={() => {
-              handleCreateSchema();
-            }}
-            variant="secondary"
-          >
-            New schema
-          </Button>
-        </div>
+            <Button
+              icon={PlusIcon}
+              type="button"
+              onClick={() => {
+                handleCreateSchema();
+              }}
+            >
+              New schema
+            </Button>
+          </Stack>
+        </Stack>
+      </Sidebar>
 
-        <Links />
-      </div>
+      <Stack className="flex-1" justify="center" align="center">
+        <Stack
+          direction="vertical"
+          align="start"
+          className="p-7 rounded-md border border-gray-300 dark:border-neutral-600 border-dashed"
+        >
+          <ol className="list-decimal space-y-2 list-inside text-gray-700 dark:text-neutral-500">
+            <li>Click &ldquo;New schema&rdquo;</li>
+            <li>Name your schema</li>
+            <li>Choose a provider</li>
+            <li>Create your models</li>
+            <li>Click &ldquo;Generate schema&rdquo;</li>
+          </ol>
+        </Stack>
+      </Stack>
     </>
   );
 }

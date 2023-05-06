@@ -1,7 +1,7 @@
-import ReactFlow, { Background } from "react-flow-renderer";
-import { useSchemaContext } from "../lib/context";
-import { TYPES } from "../lib/fields";
+import ReactFlow from "react-flow-renderer";
 import { Enum, Field, Model } from "../lib/types";
+import { TYPES } from "../lib/fields";
+import { useSchemaContext } from "../lib/context";
 
 const onLoad = (reactFlowInstance: any) => {
   reactFlowInstance.fitView();
@@ -23,6 +23,8 @@ const SchemaGraph = () => {
                   data: {
                     label: <>{model.name}</>,
                   },
+                  className:
+                    "dark:!bg-neutral-800 dark:!text-white dark:!border-white",
                   position: { x: i * 200, y: 0 },
                 })
               ),
@@ -60,7 +62,7 @@ const SchemaGraph = () => {
                         data: {
                           label: <>{field.name}</>,
                         },
-                        className: "!p-1",
+                        className: "!p-1 dark:!bg-neutral-800 dark:!text-white",
                         type: "output",
                         position: {
                           x:
@@ -77,6 +79,7 @@ const SchemaGraph = () => {
 
                         return {
                           id: `${fieldId}-to-${field.model}-relation`,
+                          className: "opacity-50 dark:opacity-25",
                           source: field.type,
                           target: fieldId,
                           animated: true,
@@ -101,9 +104,7 @@ const SchemaGraph = () => {
           : []
       }
       onLoad={onLoad}
-    >
-      <Background color="#aaa" gap={16} />
-    </ReactFlow>
+    />
   );
 };
 
